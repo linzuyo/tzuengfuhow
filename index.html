@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ㄅㄆㄇ 聽力小遊戲</title>
+<style>
+  :root{
+    --paper:#EAF4FB;
+    --ink:#1F3A5F;
+    --grid:#E8707A;
+    --hi:#FFD84D;
+    --ok:#2E9E6B;
+    --bad:#F2994A;
+    --card:#FFFFFF;
+    --muted:#6B819B;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Heiti TC",sans-serif;
+    background-image:repeating-linear-gradient(0deg,transparent 0 31px,rgba(31,58,95,.07) 31px 32px);
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  #app{max-width:480px;margin:0 auto;min-height:100%;padding:18px 18px 28px;display:flex;flex-direction:column}
+  .screen{display:none;flex:1;flex-direction:column}
+  .screen.on{display:flex}
+  h1{font-size:30px;margin:8px 0 4px;letter-spacing:.04em;line-height:1.2}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:15px}
+
+/* 田字格 */
+.tian{
+position:relative;background:var(–card);
+border:3px solid var(–grid);border-radius:6px;
+aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+}
+.tian::before,.tian::after{content:””;position:absolute;pointer-events:none}
+.tian::before{left:0;right:0;top:50%;border-top:2px dashed rgba(232,112,122,.55)}
+.tian::after{top:0;bottom:0;left:50%;border-left:2px dashed rgba(232,112,122,.55)}
+.tian span{position:relative;z-index:1;font-weight:700;line-height:1}
+
+/* menu */
+.hero{width:132px;margin:6px 0 18px}
+.hero span{font-size:76px}
+.group-label{font-size:14px;color:var(–muted);margin:14px 0 8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+border:2px solid var(–ink);background:transparent;color:var(–ink);
+padding:10px 14px;border-radius:999px;font-size:16px;font-family:inherit;font-weight:600;cursor:pointer;
+}
+.chip[aria-pressed=“true”]{background:var(–ink);color:#fff}
+.btn{
+border:0;background:var(–ink);color:#fff;font-family:inherit;font-weight:700;font-size:19px;
+padding:16px 20px;border-radius:14px;width:100%;cursor:pointer;
+box-shadow:0 5px 0 #0f2140;transition:transform .08s, box-shadow .08s;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #0f2140}
+.btn.alt{background:var(–hi);color:var(–ink);box-shadow:0 5px 0 #c9a51c}
+.btn.alt:active{box-shadow:0 1px 0 #c9a51c}
+.spacer{flex:1;min-height:18px}
+.note{font-size:13px;color:var(–muted);margin-top:12px;line-height:1.5}
+
+/* play */
+.top{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.bar{flex:1;height:10px;background:rgba(31,58,95,.15);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(–ink);border-radius:99px;transition:width .3s}
+.stat{font-size:15px;font-weight:700;min-width:64px;text-align:right}
+.quit{border:0;background:none;font-size:22px;color:var(–muted);padding:4px 6px;cursor:pointer}
+
+.prompt{text-align:center;margin:10px 0 6px}
+.prompt .ask{font-size:26px;font-weight:800;min-height:34px}
+.ask mark{background:linear-gradient(transparent 55%,var(–hi) 55%);color:inherit;padding:0 4px}
+.speaker{
+margin:10px auto 6px;width:92px;height:92px;border-radius:50%;
+border:3px solid var(–ink);background:var(–hi);font-size:42px;cursor:pointer;
+display:flex;align-items:center;justify-content:center;
+box-shadow:0 5px 0 #c9a51c;
+}
+.speaker:active{transform:translateY(4px);box-shadow:0 1px 0 #c9a51c}
+.speaker.talk{animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+.again{text-align:center;color:var(–muted);font-size:14px;margin-bottom:14px}
+.sub-toggle{display:flex;justify-content:center;margin-bottom:14px}
+
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.opt{border:0;padding:0;background:none;cursor:pointer;font-family:inherit;color:var(–ink)}
+.opt .tian span{font-size:min(15vw,64px)}
+.opt:active .tian{transform:scale(.96)}
+.opt.right .tian{background:#DFF5EA;border-color:var(–ok);animation:pop .35s}
+.opt.wrong .tian{background:#FDE9D6;border-color:var(–bad);animation:shake .35s}
+.opt:disabled{cursor:default}
+@keyframes pop{50%{transform:scale(1.1)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.fb{text-align:center;font-size:20px;font-weight:800;min-height:30px;margin-top:18px}
+.fb.ok{color:var(–ok)} .fb.no{color:var(–bad)}
+
+/* result */
+.score-wrap{width:168px;margin:14px auto 10px}
+.score-wrap span{font-size:64px}
+.stars{text-align:center;font-size:34px;letter-spacing:4px;margin:4px 0 6px}
+.msg{text-align:center;font-size:18px;font-weight:700;margin:0 0 16px}
+.wrongs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+.wchip{
+border:2px solid var(–grid);background:#fff;border-radius:10px;
+min-width:62px;padding:6px 6px 4px;font-size:28px;font-weight:700;font-family:inherit;color:var(–ink);cursor:pointer;line-height:1.1;
+}
+.wchip small{display:block;font-size:12px;font-weight:600;color:var(–muted);margin-top:2px}
+.btns{display:grid;gap:12px}
+/* 錄音 */
+.btn.ghost{background:transparent;color:var(–ink);box-shadow:none;border:2px solid var(–ink);margin-top:12px;font-size:17px;padding:13px 20px}
+.btn.ghost:active{transform:none;background:rgba(31,58,95,.08)}
+.rtop{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rtop h2{font-size:22px;margin:0}
+.back{border:0;background:none;font-size:16px;font-weight:700;color:var(–ink);cursor:pointer;padding:6px 8px 6px 0;font-family:inherit}
+.rhead{font-size:14px;color:var(–muted);margin:14px 0 6px}
+.rrow{display:flex;align-items:center;gap:8px;background:var(–card);border:2px solid rgba(232,112,122,.55);border-radius:10px;padding:6px 8px;margin-bottom:6px}
+.rrow.has{border-color:var(–ok)}
+.rrow.live{border-color:var(–bad);background:#FFF4EA}
+.rsym{font-size:30px;font-weight:700;width:40px;text-align:center}
+.rpy{flex:1;font-size:14px;color:var(–muted);line-height:1.3}
+.rpy b{display:block;color:var(–ink);font-size:15px}
+.ibtn{border:2px solid var(–ink);background:#fff;border-radius:10px;min-width:44px;height:40px;font-size:18px;cursor:pointer;font-family:inherit;color:var(–ink);padding:0 8px}
+.ibtn.rec{background:var(–bad);border-color:var(–bad);color:#fff;font-weight:700;font-size:15px}
+.ibtn:disabled{opacity:.35;cursor:default}
+#recWarn{color:var(–bad);font-size:13px;font-weight:700;min-height:18px;margin:6px 0}
+.rfoot{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.rfoot .mini{padding:12px 8px;font-size:14px;text-align:center}
+/* 自選範圍 */
+#custom{display:none;margin-top:14px;background:var(–card);border:2px solid var(–ink);border-radius:14px;padding:12px}
+#custom.on{display:block}
+.cbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cbar .cnt{flex:1;font-weight:700;font-size:15px}
+.mini{border:2px solid var(–ink);background:transparent;color:var(–ink);font-family:inherit;font-weight:600;
+font-size:13px;padding:6px 10px;border-radius:999px;cursor:pointer}
+.crow{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.crow .rowbtn{width:38px;flex:none;font-size:12px;padding:6px 0;text-align:center}
+.crow .syms{display:flex;gap:6px;flex-wrap:wrap}
+.sym{
+width:42px;height:42px;border-radius:8px;border:2px solid rgba(232,112,122,.6);background:#fff;
+color:var(–ink);font-family:inherit;font-weight:700;font-size:22px;cursor:pointer;padding:0;
+}
+.sym[aria-pressed=“true”]{background:var(–hi);border-color:var(–ink)}
+.warn{color:var(–bad);font-size:13px;font-weight:700;margin-top:6px;min-height:18px}
+@media (prefers-reduced-motion:reduce){
+.speaker.talk,.opt.right .tian,.opt.wrong .tian{animation:none}
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+
+  <!-- 首頁 -->
+
+  <section id="s-menu" class="screen on">
+    <div class="hero tian"><span>ㄅ</span></div>
+    <h1>ㄅㄆㄇ 聽力小遊戲</h1>
+    <p class="sub">聽聲音，找出正確的注音符號。</p>
+
+```
+<div class="group-label">範圍</div>
+<div class="chips" id="rangeChips">
+  <button class="chip" data-v="all" aria-pressed="true">全部 37 個</button>
+  <button class="chip" data-v="c" aria-pressed="false">聲母 21 個</button>
+  <button class="chip" data-v="v" aria-pressed="false">介音與韻母 16 個</button>
+  <button class="chip" data-v="custom" aria-pressed="false">自選</button>
+</div>
+
+<div id="custom">
+  <div class="cbar">
+    <div class="cnt" id="cnt">已選 0 個</div>
+    <button class="mini" id="selAll">全選</button>
+    <button class="mini" id="selNone">清除</button>
+  </div>
+  <div id="rows"></div>
+  <div class="warn" id="warn"></div>
+</div>
+
+<div class="group-label">題數</div>
+<div class="chips" id="countChips">
+  <button class="chip" data-v="10" aria-pressed="true">10 題</button>
+  <button class="chip" data-v="20" aria-pressed="false">20 題</button>
+  <button class="chip" data-v="0" aria-pressed="false">範圍內全部</button>
+</div>
+
+<div class="spacer"></div>
+<button class="btn" id="startBtn">開始</button>
+<button class="btn ghost" id="recGo">🎙 錄自己的聲音 <span id="recCount"></span></button>
+<p class="note" id="ttsNote">請把音量調大。聲音依漢語拼音的呼讀音念出（b 念 bo、d 念 de、zh 念 zhi…），由裝置的中文語音播放。</p>
+```
+
+  </section>
+
+  <!-- 遊戲 -->
+
+  <section id="s-play" class="screen">
+    <div class="top">
+      <button class="quit" id="quitBtn" aria-label="回首頁">✕</button>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="stat" id="stat">1/10</div>
+    </div>
+
+```
+<div class="prompt">
+  <div class="ask" id="ask"></div>
+  <button class="speaker" id="speaker" aria-label="再聽一次">🔊</button>
+  <div class="again">點喇叭再聽一次</div>
+</div>
+<div class="sub-toggle">
+  <button class="chip" id="subBtn" aria-pressed="false">顯示題目文字</button>
+</div>
+
+<div class="opts" id="opts"></div>
+<div class="fb" id="fb"></div>
+```
+
+  </section>
+
+  <!-- 錄音設定 -->
+
+  <section id="s-rec" class="screen">
+    <div class="rtop">
+      <button class="back" id="recBack">← 返回</button>
+      <h2>錄自己的聲音</h2>
+    </div>
+    <p class="note" style="margin:0 0 4px">在安靜的地方，一次錄一個音（最長 4 秒）。錄好後遊戲會優先播你的錄音，沒錄的符號用預設語音。</p>
+    <div id="recWarn"></div>
+    <div id="recList"></div>
+    <div class="rfoot">
+      <button class="mini" id="expBtn">匯出錄音備份</button>
+      <label class="mini" style="cursor:pointer">匯入錄音備份<input type="file" id="impFile" accept="application/json,.json" style="display:none"></label>
+    </div>
+    <p class="note" id="storeNote"></p>
+  </section>
+
+  <!-- 結果 -->
+
+  <section id="s-result" class="screen">
+    <div class="score-wrap tian"><span id="scoreNum">0</span></div>
+    <div class="stars" id="stars"></div>
+    <p class="msg" id="msg"></p>
+    <div id="wrongBox" style="display:none">
+      <div class="group-label" style="text-align:center">答錯的符號，點一下可以再聽</div>
+      <div class="wrongs" id="wrongs"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="btns">
+      <button class="btn alt" id="retryWrong" style="display:none">只練答錯的</button>
+      <button class="btn" id="again">再玩一次</button>
+      <button class="btn" id="home" style="background:transparent;color:var(--ink);box-shadow:none;border:2px solid var(--ink)">回首頁</button>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ===== 資料：37 個注音符號 =====
+   say = 實際交給語音念出的字（用單字帶出該符號的聲音） */
+const SYMS = [
+  // 聲母 21（呼讀音：bo po mo fo / de te ne le / ge ke he / ji qi xi / zhi chi shi ri / zi ci si）
+  {s:'ㄅ',py:'b',say:'波',t:'c'},{s:'ㄆ',py:'p',say:'坡',t:'c'},{s:'ㄇ',py:'m',say:'摸',t:'c'},{s:'ㄈ',py:'f',say:'佛',t:'c'},
+  {s:'ㄉ',py:'d',say:'德',t:'c'},{s:'ㄊ',py:'t',say:'特',t:'c'},{s:'ㄋ',py:'n',say:'訥',t:'c'},{s:'ㄌ',py:'l',say:'勒',t:'c'},
+  {s:'ㄍ',py:'g',say:'哥',t:'c'},{s:'ㄎ',py:'k',say:'科',t:'c'},{s:'ㄏ',py:'h',say:'喝',t:'c'},
+  {s:'ㄐ',py:'j',say:'雞',t:'c'},{s:'ㄑ',py:'q',say:'七',t:'c'},{s:'ㄒ',py:'x',say:'西',t:'c'},
+  {s:'ㄓ',py:'zh(zhi)',say:'知',t:'c'},{s:'ㄔ',py:'ch(chi)',say:'吃',t:'c'},{s:'ㄕ',py:'sh(shi)',say:'詩',t:'c'},{s:'ㄖ',py:'r(ri)',say:'日',t:'c'},
+  {s:'ㄗ',py:'z(zi)',say:'資',t:'c'},{s:'ㄘ',py:'c(ci)',say:'雌',t:'c'},{s:'ㄙ',py:'s(si)',say:'思',t:'c'},
+  // 介符 3
+  {s:'ㄧ',py:'i',say:'衣',t:'v'},{s:'ㄨ',py:'u',say:'烏',t:'v'},{s:'ㄩ',py:'ü',say:'迂',t:'v'},
+  // 韻符 13
+  {s:'ㄚ',py:'a',say:'啊',t:'v'},{s:'ㄛ',py:'o',say:'喔',t:'v'},{s:'ㄜ',py:'e',say:'鵝',t:'v'},{s:'ㄝ',py:'ê',say:'欸',t:'v'},
+  {s:'ㄞ',py:'ai',say:'哀',t:'v'},{s:'ㄟ',py:'ei',say:'誒',t:'v'},{s:'ㄠ',py:'ao',say:'凹',t:'v'},{s:'ㄡ',py:'ou',say:'歐',t:'v'},
+  {s:'ㄢ',py:'an',say:'安',t:'v'},{s:'ㄣ',py:'en',say:'恩',t:'v'},{s:'ㄤ',py:'ang',say:'骯',t:'v'},{s:'ㄥ',py:'eng',say:'鞥',t:'v'},
+  {s:'ㄦ',py:'er',say:'兒',t:'v'}
+];
+// 相近聲音，用來出比較容易混淆的選項
+const SIMILAR = {
+  'ㄅ':['ㄆ','ㄇ','ㄉ'],'ㄆ':['ㄅ','ㄇ','ㄊ'],'ㄇ':['ㄅ','ㄆ','ㄋ'],'ㄈ':['ㄏ','ㄆ'],
+  'ㄉ':['ㄊ','ㄅ','ㄋ'],'ㄊ':['ㄉ','ㄆ'],'ㄋ':['ㄌ','ㄇ','ㄉ'],'ㄌ':['ㄋ','ㄖ'],
+  'ㄍ':['ㄎ','ㄏ'],'ㄎ':['ㄍ','ㄏ'],'ㄏ':['ㄍ','ㄎ','ㄈ'],
+  'ㄐ':['ㄑ','ㄒ'],'ㄑ':['ㄐ','ㄒ'],'ㄒ':['ㄐ','ㄑ','ㄙ'],
+  'ㄓ':['ㄔ','ㄕ','ㄗ'],'ㄔ':['ㄓ','ㄕ','ㄘ'],'ㄕ':['ㄓ','ㄔ','ㄙ'],'ㄖ':['ㄌ','ㄕ'],
+  'ㄗ':['ㄘ','ㄙ','ㄓ'],'ㄘ':['ㄗ','ㄙ','ㄔ'],'ㄙ':['ㄗ','ㄘ','ㄕ'],
+  'ㄚ':['ㄛ','ㄜ'],'ㄛ':['ㄜ','ㄚ','ㄡ'],'ㄜ':['ㄛ','ㄝ'],'ㄝ':['ㄟ','ㄜ'],
+  'ㄞ':['ㄟ','ㄢ'],'ㄟ':['ㄞ','ㄝ'],'ㄠ':['ㄡ','ㄛ'],'ㄡ':['ㄠ','ㄛ'],
+  'ㄢ':['ㄣ','ㄤ'],'ㄣ':['ㄢ','ㄥ'],'ㄤ':['ㄥ','ㄢ'],'ㄥ':['ㄤ','ㄣ'],
+  'ㄧ':['ㄩ','ㄨ'],'ㄨ':['ㄩ','ㄧ'],'ㄩ':['ㄧ','ㄨ'],'ㄦ':['ㄜ','ㄛ']
+};
+const BY = Object.fromEntries(SYMS.map(x=>[x.s,x]));
+
+/* ===== 語音 ===== */
+const hasTTS = 'speechSynthesis' in window;
+let zhVoice = null;
+function pickVoice(){
+  if(!hasTTS) return;
+  const vs = speechSynthesis.getVoices();
+  zhVoice = vs.find(v=>/zh[-_]TW/i.test(v.lang)) ||
+            vs.find(v=>/zh[-_]HK/i.test(v.lang)) ||
+            vs.find(v=>/^zh/i.test(v.lang)) || null;
+}
+if(hasTTS){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+else document.getElementById('ttsNote').textContent = '這個瀏覽器不支援語音，請改用 Safari 或 Chrome。';
+
+function speak(text, done){
+  if(!hasTTS) return;
+  player.pause();
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-TW';
+  if(zhVoice) u.voice = zhVoice;
+  u.rate = 0.7;
+  u.pitch = 1.05;
+  const sp = document.getElementById('speaker');
+  u.onstart = ()=>sp.classList.add('talk');
+  u.onend = u.onerror = ()=>{ sp.classList.remove('talk'); done && done(); };
+  speechSynthesis.speak(u);
+}
+function speakQuestion(sym){
+  if(hasTTS) speechSynthesis.cancel();
+  if(playRec(sym)) return;
+  speak('請找，' + BY[sym].say + '，' + BY[sym].say);
+}
+function playSym(sym){
+  if(hasTTS) speechSynthesis.cancel();
+  if(!playRec(sym)) speak(BY[sym].say);
+}
+
+/* 音效 */
+let actx;
+function beep(ok){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const notes = ok ? [660,880] : [260,200];
+    notes.forEach((f,i)=>{
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = ok ? 'triangle' : 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, actx.currentTime + i*.12);
+      g.gain.exponentialRampToValueAtTime(.18, actx.currentTime + i*.12 + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + i*.12 + .18);
+      o.connect(g); g.connect(actx.destination);
+      o.start(actx.currentTime + i*.12); o.stop(actx.currentTime + i*.12 + .2);
+    });
+  }catch(e){}
+}
+
+/* ===== 遊戲狀態 ===== */
+const $ = id => document.getElementById(id);
+let cfg = {range:'all', count:10};
+let queue = [], idx = 0, score = 0, wrongs = [], locked = false, showSub = false, current = null;
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $(id).classList.add('on');
+}
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+function bindChips(boxId, key, num){
+  $(boxId).addEventListener('click', e=>{
+    const b = e.target.closest('.chip'); if(!b) return;
+    $(boxId).querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', c===b));
+    cfg[key] = num ? +b.dataset.v : b.dataset.v;
+  });
+}
+bindChips('rangeChips','range',false);
+bindChips('countChips','count',true);
+
+/* ===== 自選範圍 ===== */
+const ROWS = [
+  ['ㄅㄆㄇㄈ','ㄅㄆㄇㄈ'],['ㄉㄊㄋㄌ','ㄉㄊㄋㄌ'],['ㄍㄎㄏ','ㄍㄎㄏ'],
+  ['ㄐㄑㄒ','ㄐㄑㄒ'],['ㄓㄔㄕㄖ','ㄓㄔㄕㄖ'],['ㄗㄘㄙ','ㄗㄘㄙ'],
+  ['介音','ㄧㄨㄩ'],['ㄚㄛㄜㄝ','ㄚㄛㄜㄝ'],['ㄞㄟㄠㄡ','ㄞㄟㄠㄡ'],
+  ['ㄢㄣㄤㄥ','ㄢㄣㄤㄥ'],['ㄦ','ㄦ']
+];
+const customSel = new Set(['ㄅ','ㄆ','ㄇ']);
+
+function renderCustom(){
+  const rows = $('rows'); rows.innerHTML = '';
+  ROWS.forEach(([label, chars])=>{
+    const row = document.createElement('div'); row.className = 'crow';
+    const rb = document.createElement('button');
+    rb.className = 'mini rowbtn'; rb.textContent = '整排';
+    rb.setAttribute('aria-label','整排切換：'+label);
+    rb.addEventListener('click', ()=>{
+      const list = [...chars];
+      const allOn = list.every(c=>customSel.has(c));
+      list.forEach(c=> allOn ? customSel.delete(c) : customSel.add(c));
+      renderCustom();
+    });
+    row.appendChild(rb);
+    const box = document.createElement('div'); box.className = 'syms';
+    [...chars].forEach(c=>{
+      const b = document.createElement('button');
+      b.className = 'sym'; b.textContent = c;
+      b.setAttribute('aria-pressed', customSel.has(c));
+      b.addEventListener('click', ()=>{
+        customSel.has(c) ? customSel.delete(c) : customSel.add(c);
+        renderCustom();
+      });
+      box.appendChild(b);
+    });
+    row.appendChild(box);
+    rows.appendChild(row);
+  });
+  $('cnt').textContent = '已選 ' + customSel.size + ' 個';
+  $('warn').textContent = customSel.size < 3 ? '至少要選 3 個符號才能出題' : '';
+}
+renderCustom();
+$('selAll').addEventListener('click', ()=>{ SYMS.forEach(x=>customSel.add(x.s)); renderCustom(); });
+$('selNone').addEventListener('click', ()=>{ customSel.clear(); renderCustom(); });
+$('rangeChips').addEventListener('click', e=>{
+  if(!e.target.closest('.chip')) return;
+  $('custom').classList.toggle('on', cfg.range === 'custom');
+});
+
+function pool(){
+  if(cfg.range === 'custom') return SYMS.filter(x=>customSel.has(x.s));
+  return cfg.range==='all' ? SYMS : SYMS.filter(x=>x.t===cfg.range);
+}
+
+function startGame(list){
+  if(!list){
+    let p = shuffle(pool().map(x=>x.s));
+    if(cfg.count>0) p = p.slice(0, Math.min(cfg.count, p.length));
+    list = p;
+  } else list = shuffle(list);
+  queue = list; idx = 0; score = 0; wrongs = [];
+  show('s-play');
+  nextQ();
+}
+
+function makeOptions(ans){
+  const universe = pool().map(x=>x.s);
+  const near = (SIMILAR[ans]||[]).filter(s=>universe.includes(s));
+  const picks = [];
+  const nearShuf = shuffle(near);
+  if(nearShuf.length && Math.random() < .6) picks.push(nearShuf[0]);
+  const rest = shuffle(universe.filter(s=>s!==ans && !picks.includes(s)));
+  while(picks.length < 2 && rest.length) picks.push(rest.shift());
+  // 範圍太小時補足
+  if(picks.length < 2){
+    const all = shuffle(SYMS.map(x=>x.s).filter(s=>s!==ans && !picks.includes(s)));
+    while(picks.length < 2) picks.push(all.shift());
+  }
+  return shuffle([ans, ...picks]);
+}
+
+function nextQ(){
+  if(idx >= queue.length) return finish();
+  locked = false;
+  current = queue[idx];
+  $('stat').textContent = (idx+1) + '/' + queue.length;
+  $('bar').style.width = (idx / queue.length * 100) + '%';
+  $('fb').textContent = ''; $('fb').className = 'fb';
+  renderAsk(false);
+  const box = $('opts'); box.innerHTML = '';
+  makeOptions(current).forEach(s=>{
+    const b = document.createElement('button');
+    b.className = 'opt'; b.dataset.s = s; b.setAttribute('aria-label','選項 '+s);
+    b.innerHTML = '<div class="tian"><span>'+s+'</span></div>';
+    b.addEventListener('click', ()=>answer(b, s));
+    box.appendChild(b);
+  });
+  setTimeout(()=>speakQuestion(current), 250);
+}
+
+function renderAsk(reveal){
+  const el = $('ask');
+  if(showSub || reveal) el.innerHTML = '請找 <mark>'+current+'</mark>（'+BY[current].py+'）？';
+  else el.textContent = '請聽，找出聽到的符號';
+}
+
+function answer(btn, s){
+  if(locked) return;
+  locked = true;
+  const ok = s === current;
+  document.querySelectorAll('.opt').forEach(o=>{
+    o.disabled = true;
+    if(o.dataset.s === current) o.classList.add('right');
+  });
+  renderAsk(true);
+  if(ok){
+    score++;
+    $('fb').textContent = '答對了！' + current + ' — ' + BY[current].py; $('fb').className = 'fb ok';
+    beep(true);
+  }else{
+    btn.classList.add('wrong');
+    wrongs.push(current);
+    $('fb').textContent = '正確答案是 ' + current + ' — ' + BY[current].py; $('fb').className = 'fb no';
+    beep(false);
+    setTimeout(()=>playSym(current), 450);
+  }
+  idx++;
+  $('bar').style.width = (idx / queue.length * 100) + '%';
+  setTimeout(nextQ, ok ? 950 : 2200);
+}
+
+function finish(){
+  if(hasTTS) speechSynthesis.cancel();
+  show('s-result');
+  const total = queue.length;
+  $('scoreNum').textContent = score + '/' + total;
+  $('scoreNum').style.fontSize = total >= 20 ? '44px' : '56px';
+  const r = score/total;
+  const n = r >= .9 ? 3 : r >= .6 ? 2 : r > 0 ? 1 : 0;
+  $('stars').textContent = '★'.repeat(n) + '☆'.repeat(3-n);
+  $('msg').textContent = r === 1 ? '全部答對，太厲害了！' : r >= .9 ? '幾乎全對！' : r >= .6 ? '不錯喔，再練一次會更好！' : '多聽幾次，下次會更熟！';
+  const uniq = [...new Set(wrongs)];
+  $('wrongBox').style.display = uniq.length ? 'block' : 'none';
+  $('retryWrong').style.display = uniq.length ? 'block' : 'none';
+  $('wrongs').innerHTML = '';
+  uniq.forEach(s=>{
+    const b = document.createElement('button');
+    b.className = 'wchip'; b.innerHTML = s + '<small>' + BY[s].py + '</small>';
+    b.addEventListener('click', ()=>playSym(s));
+    $('wrongs').appendChild(b);
+  });
+  $('retryWrong').onclick = ()=>startGame(uniq);
+}
+
+/* ===== 事件 ===== */
+$('startBtn').addEventListener('click', ()=>{
+  if(cfg.range === 'custom' && customSel.size < 3){
+    $('custom').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  // 在使用者點擊時先「喚醒」語音，避免 iOS 擋掉自動播放
+  if(hasTTS){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+  unlockPlayer();
+  startGame();
+});
+$('speaker').addEventListener('click', ()=>{ if(current) speakQuestion(current); });
+$('subBtn').addEventListener('click', ()=>{
+  showSub = !showSub;
+  $('subBtn').setAttribute('aria-pressed', showSub);
+  $('subBtn').textContent = showSub ? '隱藏題目文字' : '顯示題目文字';
+  if(current) renderAsk(locked);
+});
+$('quitBtn').addEventListener('click', ()=>{ player.pause(); if(hasTTS) speechSynthesis.cancel(); locked = true; show('s-menu'); });
+$('again').addEventListener('click', ()=>startGame());
+$('home').addEventListener('click', ()=>show('s-menu'));
+
+/* ===== 自己的錄音 ===== */
+const recs = new Map();           // 符號 -> {blob, url}
+const player = new Audio();       // 共用播放器（iOS 需要先在點擊時解鎖）
+let db = null;
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+function unlockPlayer(){ try{ player.src = SILENT; player.play().catch(()=>{}); }catch(e){} }
+
+function setRec(k, blob){
+  const old = recs.get(k); if(old) URL.revokeObjectURL(old.url);
+  recs.set(k, {blob, url:URL.createObjectURL(blob)});
+}
+function playRec(sym){
+  const r = recs.get(sym); if(!r) return false;
+  const sp = $('speaker');
+  player.pause();
+  player.src = r.url;
+  player.onended = player.onerror = ()=>sp.classList.remove('talk');
+  sp.classList.add('talk');
+  player.play().catch(()=>sp.classList.remove('talk'));
+  return true;
+}
+
+function openDB(){
+  return new Promise(res=>{
+    try{
+      const r = indexedDB.open('zhuyin-voices', 1);
+      r.onupgradeneeded = ()=>r.result.createObjectStore('rec');
+      r.onsuccess = ()=>{ db = r.result; res(); };
+      r.onerror = ()=>res();
+    }catch(e){ res(); }
+  });
+}
+function dbPut(k, blob){ if(!db) return; try{ db.transaction('rec','readwrite').objectStore('rec').put(blob, k); }catch(e){} }
+function dbDel(k){ if(!db) return; try{ db.transaction('rec','readwrite').objectStore('rec').delete(k); }catch(e){} }
+function dbLoadAll(){
+  return new Promise(res=>{
+    if(!db) return res();
+    try{
+      const q = db.transaction('rec').objectStore('rec').openCursor();
+      q.onsuccess = ()=>{ const c = q.result; if(c){ setRec(c.key, c.value); c.continue(); } else res(); };
+      q.onerror = ()=>res();
+    }catch(e){ res(); }
+  });
+}
+
+/* 錄音 */
+let mr = null, recSym = null, chunks = [], stream = null, recTimer = null;
+async function startRec(sym){
+  if(!navigator.mediaDevices || !window.MediaRecorder){
+    $('recWarn').textContent = '這個瀏覽器不支援錄音，請改用 Safari 或 Chrome。'; return;
+  }
+  try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){
+    $('recWarn').textContent = '無法使用麥克風：請允許麥克風權限，並直接用瀏覽器開啟這個檔案（不要在預覽視窗內）。'; return;
+  }
+  $('recWarn').textContent = '';
+  if(hasTTS) speechSynthesis.cancel(); player.pause();
+  chunks = []; recSym = sym;
+  mr = new MediaRecorder(stream);
+  mr.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  mr.onstop = ()=>{
+    clearTimeout(recTimer);
+    stream.getTracks().forEach(tr=>tr.stop());
+    const blob = new Blob(chunks, {type: mr.mimeType || 'audio/webm'});
+    const s = recSym; recSym = null;
+    if(blob.size > 0){ setRec(s, blob); dbPut(s, blob); }
+    renderRec(); playSym(s);
+  };
+  mr.start();
+  recTimer = setTimeout(stopRec, 4000);
+  renderRec();
+}
+function stopRec(){ if(mr && mr.state !== 'inactive') mr.stop(); }
+
+function renderRec(){
+  const box = $('recList'); box.innerHTML = '';
+  const heads = {0:'聲符（聲母）', 21:'介符（介母）', 24:'韻符（韻母）'};
+  SYMS.forEach((x, i)=>{
+    if(heads[i]){ const h = document.createElement('div'); h.className = 'rhead'; h.textContent = heads[i]; box.appendChild(h); }
+    const has = recs.has(x.s), live = recSym === x.s;
+    const row = document.createElement('div');
+    row.className = 'rrow' + (has ? ' has' : '') + (live ? ' live' : '');
+    row.innerHTML = '<div class="rsym">'+x.s+'</div><div class="rpy"><b>'+x.py+'</b>'+(live ? '錄音中…' : has ? '已錄自己的聲音' : '使用預設語音')+'</div>';
+    const play = document.createElement('button');
+    play.className = 'ibtn'; play.textContent = '▶'; play.setAttribute('aria-label','試聽 '+x.s);
+    play.disabled = !!recSym;
+    play.onclick = ()=>playSym(x.s);
+    const rb = document.createElement('button');
+    rb.className = 'ibtn' + (live ? ' rec' : '');
+    rb.textContent = live ? '■ 停止' : '●';
+    rb.setAttribute('aria-label', (live ? '停止錄音 ' : '錄音 ') + x.s);
+    rb.disabled = !!recSym && !live;
+    rb.onclick = ()=> live ? stopRec() : startRec(x.s);
+    row.append(play, rb);
+    if(has){
+      const del = document.createElement('button');
+      del.className = 'ibtn'; del.textContent = '🗑'; del.setAttribute('aria-label','刪除 '+x.s+' 的錄音');
+      del.disabled = !!recSym;
+      del.onclick = ()=>{ const r = recs.get(x.s); if(r) URL.revokeObjectURL(r.url); recs.delete(x.s); dbDel(x.s); renderRec(); };
+      row.append(del);
+    }
+    box.appendChild(row);
+  });
+  updateRecCount();
+}
+function updateRecCount(){
+  $('recCount').textContent = recs.size ? '（已錄 '+recs.size+'/37）' : '';
+}
+
+/* 備份：匯出／匯入 */
+function blobToDataURL(b){ return new Promise(res=>{ const f = new FileReader(); f.onload = ()=>res(f.result); f.readAsDataURL(b); }); }
+function dataURLToBlob(u){
+  const [h, b64] = u.split(','); const mime = (h.match(/:(.*?);/)||[])[1] || 'audio/webm';
+  const bin = atob(b64); const arr = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type:mime});
+}
+$('expBtn').addEventListener('click', async ()=>{
+  if(!recs.size){ $('recWarn').textContent = '還沒有錄音可以匯出。'; return; }
+  const out = {};
+  for(const [k, v] of recs) out[k] = await blobToDataURL(v.blob);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(out)], {type:'application/json'}));
+  a.download = 'zhuyin-voices.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  $('recWarn').textContent = '';
+});
+$('impFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const obj = JSON.parse(await f.text()); let n = 0;
+    for(const k of Object.keys(obj)){
+      if(!BY[k] || typeof obj[k] !== 'string') continue;
+      const blob = dataURLToBlob(obj[k]); setRec(k, blob); dbPut(k, blob); n++;
+    }
+    $('recWarn').textContent = '已匯入 ' + n + ' 個錄音。';
+  }catch(err){ $('recWarn').textContent = '匯入失敗，請確認是這個遊戲匯出的備份檔。'; }
+  e.target.value = ''; renderRec();
+});
+
+$('recGo').addEventListener('click', ()=>{ renderRec(); show('s-rec'); });
+$('recBack').addEventListener('click', ()=>{ if(recSym) stopRec(); player.pause(); show('s-menu'); });
+
+openDB().then(dbLoadAll).then(()=>{
+  $('storeNote').textContent = db
+    ? '錄音會存在這個瀏覽器裡。換手機或清除網站資料前，請先匯出備份。'
+    : '這個環境無法保存錄音，關掉頁面後會消失。建議直接用瀏覽器開啟檔案，並用匯出備份保存。';
+  updateRecCount();
+});
+</script>
+
+</body>
+</html>
